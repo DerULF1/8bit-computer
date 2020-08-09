@@ -5,7 +5,7 @@ My personal background on computers is a degree in applied computer science but 
 
 ##Major Enhancements to Ben Eater's Design
 * [16-bit address bus with 64k bytes of RAM](Schematics/memory.pdf)
-* [four general purpose registers](Schematics/memory.pdf)
+* [four general purpose registers](Schematics/Register.pdf)
 * [ALU with boolean and shift operations](Schematics/ALU.pdf)
 * [dividing instruction decoding](Schematics/InstructionDecoder.pdf) and [control logic](Schematics/ControlLogic.pdf)
 * [four 8-bit digital input-/output-ports](Schematics/PortSelector.pdf)
