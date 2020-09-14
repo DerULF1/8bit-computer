@@ -17,7 +17,7 @@
 #define CHIP_ENABLE true
 #define CHIP_DISABLE false
 
-#define ROM_NR 5
+#define ROM_NR 2
 
 #define LAST_MC_ROM 3
 #define FIRST_LABEL_ROM (LAST_MC_ROM + 1)
@@ -464,19 +464,40 @@ void setup() {
   int cmd = 0;
 
   /* RESET */
-  writeMicroCodeByte(addr++, 0);
-  writeMicroCodeByte(addr++, _goto(0));
-  
-  writeLabelForNotFlags(_F_II, false, 0, addr);  
-  writeMicroCodeByte(addr++, _TI);
-   
-  writeLabelForFlags(_F_II, false, 0, addr);  
-  
-  writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW | _OW | _FLG_BUS | _FW);
-  writeMicroCodeByte(addr++, _NO | _SI | _PI | _SD);
-  writeMicroCodeByte(addr++, _SC | _SD | _IC);
+  writeMicroCodeByte(addr++, 0); /* NOOP */
 
+             /* Ensure Interrupt inhibited */
+  writeMicroCodeByte(addr++, _goto(0));   
+  writeLabelForNotFlags(_F_II, false, 0, addr);  
+  writeMicroCodeByte(addr++, _TI);   
+  writeLabelForFlags(_F_II, false, 0, addr);  
+
+           /* read program start from 0xfffc */
+  writeMicroCodeByte(addr++, _ALU_255 | _ZW); /* Z-Register = 0xff */
+  writeMicroCodeByte(addr++, _FLG_CLC | _FW); /* Clear Carry for Shift */
+  writeMicroCodeByte(addr++, _ZE | _NH | _ALU_LSL | _ZW); /* pick NH=0xff, ZW=0xfe */
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW);  /* ZW=0xfc */
+  writeMicroCodeByte(addr++, _ZE | _NL); /* pick NL=0xfc */
+  writeMicroCodeByte(addr++, _NO | _ME | _CW); /* read low byte to C-Register */
+
+  writeMicroCodeByte(addr++, _ALU_255 | _ZW); /* Z-Register = 0xff */
+  writeMicroCodeByte(addr++, _FLG_CLC | _FW); /* Clear Carry for Shift */
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW | _FW); /* Z-Register = 0xfe */
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW); /* Z-Register = 0xfd (C-Flag!) */
+  writeMicroCodeByte(addr++, _ZE | _NL); /* pick NL=0xfd */
+  writeMicroCodeByte(addr++, _NO | _ME | _DW); /* read high byte to D-Register */
+  
+  writeMicroCodeByte(addr++, _DE | _NH); /* get high byte from D-Register */
+  writeMicroCodeByte(addr++, _CE | _NL); /* get low byte from C-Register */
+  writeMicroCodeByte(addr++, _NO | _PI); /* set Progam counter */
+
+            /* Initialize registers to zero */
+  writeMicroCodeByte(addr++, _ALU_0 | _ZW);
+  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW | _OW | _FLG_BUS | _FW);  
+  writeMicroCodeByte(addr++, _NO | _SI | _SD);    
+  writeMicroCodeByte(addr++, _SC | _SD ); /* Stack-Pointer to 0xffff */
+           /* fall through to fetch */
+           
   /* Fetch */
   fetchAddr = addr;
   writeMicroCodeByte(addr++, _PO | _PC | _ME | _IC | _IL);
