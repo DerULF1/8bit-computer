@@ -17,7 +17,7 @@
 #define CHIP_ENABLE true
 #define CHIP_DISABLE false
 
-#define ROM_NR 3
+#define ROM_NR 0
 
 #define LAST_MC_ROM 3
 #define FIRST_LABEL_ROM (LAST_MC_ROM + 1)
@@ -103,7 +103,6 @@
 
 int fetchAddr = 0;
 int interruptAddr = 0;
-boolean f_debug = false;
 
 const char     regName[] = {'A', 'B', 'C', 'D'};
 const uint32_t allRegW[] = {_AW, _BW, _CW, _DW};
@@ -248,8 +247,8 @@ int getChipID() {
   return b1 + 256 * b2;  
 }
 
-void setAddress(int address, boolean chipEnable, boolean outputEnable) {
-  shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 8) | (chipEnable ? 0 : 0x40) | (outputEnable ? 0 : 0x80));   
+void setAddress(int address, boolean outputEnable) {
+  shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 8) | (outputEnable ? 0 : 0x80));
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, address);
   
   digitalWrite(SHIFT_LATCH, LOW);
@@ -257,10 +256,10 @@ void setAddress(int address, boolean chipEnable, boolean outputEnable) {
   digitalWrite(SHIFT_LATCH, LOW);  
 }
 
-void writeByte(int address, byte odata) {
+void writeEEPROM(int address, byte odata) {
   setDataPinMode(OUTPUT);
   
-  setAddress(address, CHIP_ENABLE, WRITE);
+  setAddress(address, WRITE);
 
   byte data = odata;
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
@@ -270,30 +269,32 @@ void writeByte(int address, byte odata) {
   digitalWrite(WRITE_ENABLE, LOW);  
   delayMicroseconds(1);
   digitalWrite(WRITE_ENABLE, HIGH);
-}
 
-void writeEEPROM(int address, byte odata) {
-  writeByte(address, odata);
-  int cnt = 1000;
-  byte l;
-  do {
-    setAddress(address, CHIP_DISABLE, READ);
+  delay(15);
+  byte l = readEEPROM(address);
+/*  int cnt = 1000;
+  while ((cnt > 0) && (l != odata)) {
     cnt--;
+    if ((address & 0xff) == 0)
+      l = readEEPROM(address + 1);
+    else 
+      l = readEEPROM(address - 1);
     l = readEEPROM(address);
-  } while ((cnt > 0) && (l != odata)); 
-
+  }
   if (cnt == 0){
+*/
+  if (l != odata){
     char buf[60];
     sprintf(buf, "\r\nWRITE ERROR on %04x! (%02x %02x)\r\n", address, odata, l);
     Serial.println(buf);
     writeErrors++;
-    }
+  }
 }
 
 byte readEEPROM(int address) {
   setDataPinMode(INPUT);  
   
-  setAddress(address, CHIP_ENABLE, READ);
+  setAddress(address, READ);
   
   setDataPinMode(INPUT);  
   byte data = 0;
@@ -358,7 +359,7 @@ void writeLabelForFlags(int flags, boolean command, int labelNumber, int destAdd
   if (!IS_LABEL_ROM)
     return;
   for (int f = 0; f <= (_F_C | _F_Z | _F_N | _F_V  | _F_II); f++) {
-    if ((f & flags) == flags) {
+    if ((f & flags) != 0) {
       writeLabelByte(f, command, labelNumber, destAddress);
       writeLabelByte(f | _F_IR, command, labelNumber, destAddress);
       if (command) {
@@ -397,29 +398,6 @@ void writeLabelForNotFlags(int flags, boolean command, int labelNumber, int dest
     }
   }
 }
-
-void writeLabelForFlags(int flags, int notFlags, boolean command, int labelNumber, int destAddress) {
-  if (!IS_LABEL_ROM)
-    return;
-  for (int f = 0; f <= (_F_C | _F_Z | _F_N | _F_V  | _F_II); f++) {
-    if ((f & flags) == flags && (f & notFlags) != notFlags) {
-      writeLabelByte(f, command, labelNumber, destAddress);
-      writeLabelByte(f | _F_IR, command, labelNumber, destAddress);
-      if (command) {
-        writeLabelByte(f | _F_IF, command, labelNumber, fetchAddr);
-        if ((f & _F_II) == 0) {
-          writeLabelByte(f | _F_IR | _F_IF, command, labelNumber, interruptAddr);
-        } else {
-          writeLabelByte(f | _F_IR | _F_IF, command, labelNumber, fetchAddr);
-        }
-      } else {
-        writeLabelByte(f | _F_IF, command, labelNumber, destAddress);
-        writeLabelByte(f | _F_IR | _F_IF, command, labelNumber, destAddress);
-      }
-    }
-  }
-}
-
 void writeLabelByte(int labelFlags, boolean command, int labelNumber, int destAddress) {
   if (!IS_LABEL_ROM)
     return;
@@ -427,11 +405,11 @@ void writeLabelByte(int labelFlags, boolean command, int labelNumber, int destAd
   unsigned long labelAddress = labelNumber + (command ? 0 : 256) + ((unsigned long) labelFlags) * 512;
   byte data = (destAddress >> ((ROM_NR - FIRST_LABEL_ROM) * 8)) & 0xff;
 
-  if (f_debug) {
+  /*
   char buf[80];
   sprintf(buf, "label %04lx: (F%01x C%d N%02x A%04x) %02x", labelAddress, labelFlags, command, labelNumber, destAddress, data);
   Serial.println(buf);
-  }
+  */
 
   writeEEPROM4MData(labelAddress, data);
 }
@@ -515,9 +493,11 @@ void setup() {
 
             /* Initialize registers to zero */
   writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW | _OW | _FLG_BUS | _FW);  
+  writeMicroCodeByte(addr++, _ZE | _NH | _NL);  
   writeMicroCodeByte(addr++, _NO | _SI | _SD);    
   writeMicroCodeByte(addr++, _SC | _SD ); /* Stack-Pointer to 0xffff */
+  writeMicroCodeByte(addr++, _ZE | _AW | _BW | _CW | _DW | _OW);  
+  writeMicroCodeByte(addr++, _ZE | _FLG_BUS | _FW | _IC);  
            /* fall through to fetch */
            
   /* Fetch */
@@ -1165,21 +1145,24 @@ void setup() {
   
   showCommand("PTF", cmd);
   writeLabelUncond(true, cmd++, addr);
-  writeMicroCodeByte(addr++, _SC);
-  writeMicroCodeByte(addr++, _SO | _ME | _ALU_BUS | _FW);
+  writeMicroCodeByte(addr++, _SC | _ALU_0 | _ZW);
+  writeMicroCodeByte(addr++, _SO | _ME | _ALU_OR | _FW);
   writeMicroCodeByte(addr++, _goto(1));   
-f_debug = true ;
-  Serial.println(F("FN FI."));
-  writeLabelForFlags(_F_N, _F_II, false, 1, addr);  
-  Serial.println(F("FI FN."));
-  writeLabelForFlags(_F_II, _F_N, false, 1, addr);  
+  int toggleAddr = addr;
   writeMicroCodeByte(addr++, _TI);   
-  Serial.println(F("FN FI."));
-  writeLabelForFlags(_F_N | _F_II, false, 1, addr);  
-  Serial.println(F("!FN FI."));
-  writeLabelForNotFlags(_F_N | _F_II, false, 1, addr);  
+  int noToggleAddr = addr;
+  if (IS_LABEL_ROM) {
+    for (int f = 0; f <= (_F_C | _F_Z | _F_N | _F_V | _F_II | _F_IR | _F_IF); f++) {
+      if ((f & (_F_N | _F_II)) == 0) {
+        writeLabelByte(f, false, 1, noToggleAddr);
+        writeLabelByte(f | _F_N, false, 1, toggleAddr);
+        writeLabelByte(f | _F_II, false, 1, toggleAddr);
+        writeLabelByte(f | _F_N | _F_II, false, 1, noToggleAddr);
+      }
+    }
+  }    
   writeMicroCodeByte(addr++, _SO | _ME | _FLG_BUS | _FW | _IC);
-f_debug = false ;
+  
 /*
   // Test routines   
   sprintf(buf, "Cmd MALU: %02x %02x", addr, cmd);
@@ -1256,7 +1239,6 @@ f_debug = false ;
 */
 
   /* set unused op codes to HLT */
-  Serial.println(F("generating unused codes."));
   writeMicroCodeByte(addr, _HC);
   while (cmd < 256) {
     writeLabelUncond(true, cmd++, addr);
