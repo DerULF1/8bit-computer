@@ -1,7 +1,7 @@
 //
 // Creates the EEPROMs for the MicroCode.
 //
-// Written 01.06.2020 by Ulf Caspers 
+// Written 01.06.2020 by Ulf Caspers
 //
 
 #define SHIFT_DATA 2
@@ -17,7 +17,7 @@
 #define CHIP_ENABLE true
 #define CHIP_DISABLE false
 
-#define ROM_NR 0
+#define ROM_NR 3
 
 #define LAST_MC_ROM 3
 #define FIRST_LABEL_ROM (LAST_MC_ROM + 1)
@@ -112,21 +112,21 @@ int writeErrors = 0;
 
 void setAddress4M(unsigned long address, boolean outputEnable, boolean chipEnable) {
   digitalWrite(SHIFT_LATCH, LOW);
-  
+
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 16) | (outputEnable ? 0 : 0x80) | (chipEnable ? 0 : 0x40));
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 8));
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, address);
-  
+
   digitalWrite(SHIFT_LATCH, HIGH);
 }
 
 void writeEEPROM4MByte(unsigned long address, byte odata) {
-  
+
   setDataPinMode(OUTPUT);
-    
+
   setAddress4M(address, WRITE, CHIP_ENABLE);
 
-  digitalWrite(WRITE_ENABLE, LOW);  
+  digitalWrite(WRITE_ENABLE, LOW);
   byte data = odata;
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
     digitalWrite(pin, data & 0x80);
@@ -142,7 +142,7 @@ void writeEEPROM4MData(unsigned long address, byte odata) {
   writeEEPROM4MByte(0x2AAA, 0x55);
   writeEEPROM4MByte(0x5555, 0xA0);
   writeEEPROM4MByte(address, odata);
-  
+
   byte l = readEEPROM4M(address);
   int cnt = 1000;
   while ((cnt > 0) && (l != odata)) {
@@ -151,7 +151,7 @@ void writeEEPROM4MData(unsigned long address, byte odata) {
     l = readEEPROM4M(address);
   }
 
-  if (cnt == 0){
+  if (cnt == 0) {
     char buf[60];
     sprintf(buf, "\r\nWRITE ERROR on %06x! (%02x %02x)\r\n", address, odata, l);
     Serial.println(buf);
@@ -160,8 +160,8 @@ void writeEEPROM4MData(unsigned long address, byte odata) {
 }
 
 byte readEEPROM4M(unsigned long address) {
-  setDataPinMode(INPUT);  
-  
+  setDataPinMode(INPUT);
+
   setAddress4M(address, READ, CHIP_ENABLE);
 
   delayMicroseconds(1);
@@ -180,7 +180,7 @@ void eraseSector4M(unsigned long baseAddress) {
   writeEEPROM4MByte(0x5555, 0xAA);
   writeEEPROM4MByte(0x2AAA, 0x55);
   writeEEPROM4MByte(baseAddress, 0x30);
-  
+
   byte l = readEEPROM4M(baseAddress);
   unsigned long expectedEnd = millis() + 100;
   while ((l != 0xff) && millis() < expectedEnd) {
@@ -192,7 +192,7 @@ void eraseSector4M(unsigned long baseAddress) {
     char buf[40];
     sprintf(buf, "\r\nSector Erase ERROR on %06x!", baseAddress);
     Serial.println(buf);
-  }  
+  }
 }
 
 void eraseChip4M() {
@@ -203,7 +203,7 @@ void eraseChip4M() {
   writeEEPROM4MByte(0x5555, 0xAA);
   writeEEPROM4MByte(0x2AAA, 0x55);
   writeEEPROM4MByte(0x5555, 0x10);
-  
+
   byte l = readEEPROM4M(0);
   unsigned long expectedEnd = millis() + 250;
   while ((l != 0xff) && millis() < expectedEnd) {
@@ -213,7 +213,7 @@ void eraseChip4M() {
 
   if (l != 0xff) {
     Serial.println(F("\r\nChip Erase ERROR!\r\n"));
-  }  
+  }
 }
 
 void printContents4M(unsigned long baseAddress) {
@@ -225,8 +225,8 @@ void printContents4M(unsigned long baseAddress) {
 
     char buf[80];
     sprintf(buf, "%06x: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-      baseAddress + base, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
-      data[9], data[10], data[11], data[12], data[13], data[14], data[15]);
+            baseAddress + base, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
+            data[9], data[10], data[11], data[12], data[13], data[14], data[15]);
 
     Serial.println(buf);
   }
@@ -244,59 +244,59 @@ int getChipID() {
   setAddress4M(0x5555L, WRITE, CHIP_DISABLE);
   delayMicroseconds(1);
   setAddress4M(0x5555L, READ, CHIP_ENABLE);
-  return b1 + 256 * b2;  
+  return b1 + 256 * b2;
 }
 
 void setAddress(int address, boolean outputEnable) {
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 8) | (outputEnable ? 0 : 0x80));
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, address);
-  
+
   digitalWrite(SHIFT_LATCH, LOW);
   digitalWrite(SHIFT_LATCH, HIGH);
-  digitalWrite(SHIFT_LATCH, LOW);  
+  digitalWrite(SHIFT_LATCH, LOW);
 }
 
 void writeEEPROM(int address, byte odata) {
-  setDataPinMode(OUTPUT);
-  
-  setAddress(address, WRITE);
+  byte old = readEEPROM(address);
+  if (old != odata) {
+    setDataPinMode(OUTPUT);
 
-  byte data = odata;
-  for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
-    digitalWrite(pin, data & 0x80);
-    data = data << 1;
-  }
-  digitalWrite(WRITE_ENABLE, LOW);  
-  delayMicroseconds(1);
-  digitalWrite(WRITE_ENABLE, HIGH);
+    setAddress(address, WRITE);
 
-  delay(15);
-  byte l = readEEPROM(address);
-/*  int cnt = 1000;
-  while ((cnt > 0) && (l != odata)) {
-    cnt--;
-    if ((address & 0xff) == 0)
-      l = readEEPROM(address + 1);
-    else 
-      l = readEEPROM(address - 1);
-    l = readEEPROM(address);
-  }
-  if (cnt == 0){
-*/
-  if (l != odata){
-    char buf[60];
-    sprintf(buf, "\r\nWRITE ERROR on %04x! (%02x %02x)\r\n", address, odata, l);
-    Serial.println(buf);
-    writeErrors++;
+    byte data = odata;
+    for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
+      digitalWrite(pin, data & 0x80);
+      data = data << 1;
+    }
+    digitalWrite(WRITE_ENABLE, LOW);
+    delayMicroseconds(1);
+    digitalWrite(WRITE_ENABLE, HIGH);
+
+    /*  delay(15);*/
+    byte l = readEEPROM(address);
+    int cnt = 1000;
+    while ((cnt > 0) && (l != odata)) {
+      cnt--;
+      if ((address & 0xff) == 0)
+        l = readEEPROM(address + 1);
+      else
+        l = readEEPROM(address - 1);
+      l = readEEPROM(address);
+    }
+    if (l != odata) {
+      char buf[60];
+      sprintf(buf, "\r\nWRITE ERROR on %04x! (%02x %02x)\r\n", address, odata, l);
+      Serial.println(buf);
+      writeErrors++;
+    }
   }
 }
 
 byte readEEPROM(int address) {
-  setDataPinMode(INPUT);  
-  
+  setDataPinMode(INPUT);
+
   setAddress(address, READ);
-  
-  setDataPinMode(INPUT);  
+
   byte data = 0;
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
     data = data * 2 + digitalRead(pin);
@@ -307,11 +307,11 @@ byte readEEPROM(int address) {
 void setDataPinMode(int mode) {
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
     pinMode(pin, mode);
-  }  
+  }
 }
 
 void initPorts() {
-  digitalWrite(WRITE_ENABLE, HIGH);  
+  digitalWrite(WRITE_ENABLE, HIGH);
   digitalWrite(SHIFT_LATCH, LOW);
   pinMode(SHIFT_DATA, OUTPUT);
   pinMode(SHIFT_CLK, OUTPUT);
@@ -328,8 +328,8 @@ void printContents(int baseAddress) {
 
     char buf[80];
     sprintf(buf, "%04x: %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x",
-      baseAddress + base, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
-      data[9], data[10], data[11], data[12], data[13], data[14], data[15]);
+            baseAddress + base, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
+            data[9], data[10], data[11], data[12], data[13], data[14], data[15]);
 
     Serial.println(buf);
   }
@@ -338,14 +338,14 @@ void printContents(int baseAddress) {
 void writeMicroCodeByte(int address, uint32_t code) {
   if (!IS_MC_ROM)
     return;
-    
+
   uint32_t inv = code ^ _negativ;
   byte data = (inv >> (ROM_NR * 8)) & 0xff;
-  
+
   /*
-  char buf[80];
-  sprintf(buf, "Out %04x: (%08lx, %08lx) %02x", address, code, inv, data);
-  Serial.println(buf);
+    char buf[80];
+    sprintf(buf, "Out %04x: (%08lx, %08lx) %02x", address, code, inv, data);
+    Serial.println(buf);
   */
 
   writeEEPROM(address, data);
@@ -401,14 +401,14 @@ void writeLabelForNotFlags(int flags, boolean command, int labelNumber, int dest
 void writeLabelByte(int labelFlags, boolean command, int labelNumber, int destAddress) {
   if (!IS_LABEL_ROM)
     return;
-    
+
   unsigned long labelAddress = labelNumber + (command ? 0 : 256) + ((unsigned long) labelFlags) * 512;
   byte data = (destAddress >> ((ROM_NR - FIRST_LABEL_ROM) * 8)) & 0xff;
 
   /*
-  char buf[80];
-  sprintf(buf, "label %04lx: (F%01x C%d N%02x A%04x) %02x", labelAddress, labelFlags, command, labelNumber, destAddress, data);
-  Serial.println(buf);
+    char buf[80];
+    sprintf(buf, "label %04lx: (F%01x C%d N%02x A%04x) %02x", labelAddress, labelFlags, command, labelNumber, destAddress, data);
+    Serial.println(buf);
   */
 
   writeEEPROM4MData(labelAddress, data);
@@ -421,10 +421,10 @@ uint32_t _goto(int labelNumber) {
 void showCommand(char* cmdName, int cmdCode) {
   char buf[60];
   if (strstr(cmdName, ",#") != NULL) {
-    sprintf(buf, " %s{v}\t-> 0x%02x @ v[7:0]", cmdName, cmdCode);
-  }  
+    sprintf(buf, " %s{v}\t=> 0x%02x @ v[7:0]", cmdName, cmdCode);
+  }
   else if (strstr(cmdName, "addr") != NULL) {
-    sprintf(buf, " %s\t-> 0x%02x @ ad[7:0] @ ad[15:8]", cmdName, cmdCode);
+    sprintf(buf, " %s\t=> 0x%02x @ ad[7:0] @ ad[15:8]", cmdName, cmdCode);
     char* ap = strstr(buf, "addr");
     ap[0] = '{';
     ap[1] = 'a';
@@ -432,14 +432,14 @@ void showCommand(char* cmdName, int cmdCode) {
     ap[3] = '}';
   }
   else if (strstr(cmdName, "val") != NULL) {
-    sprintf(buf, " %s\t-> 0x%02x @ v[7:0]", cmdName, cmdCode);
+    sprintf(buf, " %s\t=> 0x%02x @ v[7:0]", cmdName, cmdCode);
     char* ap = strstr(buf, "val");
     ap[0] = '{';
     ap[1] = 'v';
     ap[2] = '}';
   }
   else {
-    sprintf(buf, " %s\t-> 0x%02x", cmdName, cmdCode);
+    sprintf(buf, " %s\t=> 0x%02x", cmdName, cmdCode);
   }
   Serial.println(buf);
 }
@@ -449,11 +449,11 @@ void setup() {
   Serial.begin(57600);
   char buf[60];
   sprintf(buf, "start ROM #%d", ROM_NR);
-  Serial.println(buf);  
-  
+  Serial.println(buf);
+
   unsigned long startMillis = millis();
-  
-  initPorts();  
+
+  initPorts();
 
   if (IS_LABEL_ROM) {
     Serial.println(F("Erasing Chip..."));
@@ -466,13 +466,13 @@ void setup() {
   /* RESET */
   writeMicroCodeByte(addr++, 0); /* NOOP */
 
-             /* Ensure Interrupt inhibited */
-  writeMicroCodeByte(addr++, _goto(0));   
-  writeLabelForNotFlags(_F_II, false, 0, addr);  
-  writeMicroCodeByte(addr++, _TI);   
-  writeLabelForFlags(_F_II, false, 0, addr);  
+  /* Ensure Interrupt inhibited */
+  writeMicroCodeByte(addr++, _goto(0));
+  writeLabelForNotFlags(_F_II, false, 0, addr);
+  writeMicroCodeByte(addr++, _TI);
+  writeLabelForFlags(_F_II, false, 0, addr);
 
-           /* read program start from 0xfffc */
+  /* read program start from 0xfffc */
   writeMicroCodeByte(addr++, _ALU_255 | _ZW); /* Z-Register = 0xff */
   writeMicroCodeByte(addr++, _FLG_CLC | _FW); /* Clear Carry for Shift */
   writeMicroCodeByte(addr++, _ZE | _NH | _ALU_LSL | _ZW); /* pick NH=0xff, ZW=0xfe */
@@ -486,20 +486,20 @@ void setup() {
   writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW); /* Z-Register = 0xfd (C-Flag!) */
   writeMicroCodeByte(addr++, _ZE | _NL); /* pick NL=0xfd */
   writeMicroCodeByte(addr++, _NO | _ME | _DW); /* read high byte to D-Register */
-  
+
   writeMicroCodeByte(addr++, _DE | _NH); /* get high byte from D-Register */
   writeMicroCodeByte(addr++, _CE | _NL); /* get low byte from C-Register */
   writeMicroCodeByte(addr++, _NO | _PI); /* set Progam counter */
 
-            /* Initialize registers to zero */
+  /* Initialize registers to zero */
   writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL);  
-  writeMicroCodeByte(addr++, _NO | _SI | _SD);    
+  writeMicroCodeByte(addr++, _ZE | _NH | _NL);
+  writeMicroCodeByte(addr++, _NO | _SI | _SD);
   writeMicroCodeByte(addr++, _SC | _SD ); /* Stack-Pointer to 0xffff */
-  writeMicroCodeByte(addr++, _ZE | _AW | _BW | _CW | _DW | _OW);  
-  writeMicroCodeByte(addr++, _ZE | _FLG_BUS | _FW | _IC);  
-           /* fall through to fetch */
-           
+  writeMicroCodeByte(addr++, _ZE | _AW | _BW | _CW | _DW | _OW);
+  writeMicroCodeByte(addr++, _ZE | _FLG_BUS | _FW | _IC);
+  /* fall through to fetch */
+
   /* Fetch */
   fetchAddr = addr;
   writeMicroCodeByte(addr++, _PO | _PC | _ME | _IC | _IL);
@@ -574,7 +574,7 @@ void setup() {
   writeMicroCodeByte(addr++, _NL | _SO | _ME);
   writeMicroCodeByte(addr++, _NO | _PI | _SC);
   writeMicroCodeByte(addr++, _SO | _ME | _FLG_BUS | _FW | _TI | _IC);
-  
+
   /* Register */
   int dest = 0;
   int src = 0;
@@ -586,42 +586,42 @@ void setup() {
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[src] | allRegW[dest] | _IC);
-        
+
         sprintf(buf, "ADD R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
         writeMicroCodeByte(addr++, allRegE[src]  | _ALU_ADD | _ZW | _FW);
         writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
         sprintf(buf, "SUB R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
         writeMicroCodeByte(addr++, allRegE[src]  | _ALU_SUB | _ZW | _FW);
         writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
         sprintf(buf, "AND R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
-        writeMicroCodeByte(addr++, allRegE[src]  | _ALU_OR | _ZW | _FW);
+        writeMicroCodeByte(addr++, allRegE[src]  | _ALU_AND | _ZW | _FW);
         writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
         sprintf(buf, "OR  R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
         writeMicroCodeByte(addr++, allRegE[src]  | _ALU_OR | _ZW | _FW);
         writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
         sprintf(buf, "XOR R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
         writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
         writeMicroCodeByte(addr++, allRegE[src]  | _ALU_XOR | _ZW | _FW);
         writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
         sprintf(buf, "CMP R%c,R%c", regName[dest], regName[src]);
         showCommand(buf, cmd);
         writeLabelUncond(true, cmd++, addr);
@@ -630,7 +630,7 @@ void setup() {
       }
       src++;
     }
-    dest++; 
+    dest++;
   }
 
   /* immediate */
@@ -640,49 +640,49 @@ void setup() {
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, _PO | _ME | allRegW[dest] | _PC | _IC);
-        
+
     sprintf(buf, "ADD R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _ALU_ADD | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _PC | _IC);
-        
+
     sprintf(buf, "SUB R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _ALU_SUB | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _PC | _IC);
-        
+
     sprintf(buf, "AND R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _ALU_AND | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _PC | _IC);
-        
+
     sprintf(buf, "OR  R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _ALU_OR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _PC | _IC);
-        
+
     sprintf(buf, "XOR R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _ALU_XOR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _PC | _IC);
-        
+
     sprintf(buf, "CMP R%c,#", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _PO | _ME | _PC | _ALU_SUB | _FW | _IC);
 
-    dest++; 
+    dest++;
   }
 
   /* absolut */
@@ -694,7 +694,7 @@ void setup() {
     writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
     writeMicroCodeByte(addr++, _PO | _ME | _NH);
     writeMicroCodeByte(addr++, _NO | _ME | allRegW[dest] | _PC | _IC);
-    
+
     sprintf(buf, "MOV addr,R%c", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -710,7 +710,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_ADD | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "SUB R%c,addr", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -719,7 +719,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_SUB | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "AND R%c,addr", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -728,7 +728,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_AND | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "OR  R%c,addr", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -737,7 +737,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_OR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "XOR R%c,addr", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -746,7 +746,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_XOR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "CMP R%c,addr", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -755,7 +755,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW | _PC);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_SUB | _FW | _IC);
 
-    dest++; 
+    dest++;
   }
 
   /* indirect */
@@ -767,7 +767,7 @@ void setup() {
     writeMicroCodeByte(addr++, _CE | _NL);
     writeMicroCodeByte(addr++, _DE | _NH);
     writeMicroCodeByte(addr++, _NO | _ME | allRegW[dest] | _IC);
-    
+
     sprintf(buf, "MOV [RCD],R%c", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -783,7 +783,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_ADD | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "SUB R%c,[RCD]", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -792,7 +792,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_SUB | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "AND R%c,[RCD]", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -801,7 +801,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_AND | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "OR  R%c,[RCD]", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -810,7 +810,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_OR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "XOR R%c,[RCD]", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -819,7 +819,7 @@ void setup() {
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_XOR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-        
+
     sprintf(buf, "CMP R%c,[RCD]", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
@@ -827,8 +827,8 @@ void setup() {
     writeMicroCodeByte(addr++, _DE | _NH);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_BUS | _ZW);
     writeMicroCodeByte(addr++, _NO | _ME | _ALU_SUB | _FW | _IC);
-    
-    dest++; 
+
+    dest++;
   }
 
   /* OUT */
@@ -838,15 +838,15 @@ void setup() {
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _OW | _IC);
-    dest++; 
+    dest++;
   }
-  
+
   showCommand("OUT addr", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
   writeMicroCodeByte(addr++, _PO | _ME | _NH);
   writeMicroCodeByte(addr++, _NO | _ME | _OW | _PC | _IC);
-  
+
   showCommand("OUT [RCD]", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _CE | _NL);
@@ -861,16 +861,16 @@ void setup() {
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_LSL | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-    dest++; 
+    dest++;
   }
-  
+
   showCommand("LSL addr", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
   writeMicroCodeByte(addr++, _PO | _ME | _NH);
   writeMicroCodeByte(addr++, _NO | _ME | _ALU_LSL | _ZW | _FW | _PC);
   writeMicroCodeByte(addr++, _NO | _ZE | _MW | _IC);
-  
+
   showCommand("LSL [RCD]", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _CE | _NL);
@@ -886,16 +886,16 @@ void setup() {
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _ALU_LSR | _ZW | _FW);
     writeMicroCodeByte(addr++, allRegW[dest] | _ZE | _IC);
-    dest++; 
+    dest++;
   }
-  
+
   showCommand("LSR addr", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
   writeMicroCodeByte(addr++, _PO | _ME | _NH);
   writeMicroCodeByte(addr++, _NO | _ME | _ALU_LSR | _ZW | _FW | _PC);
   writeMicroCodeByte(addr++, _NO | _ZE | _MW | _IC);
-  
+
   showCommand("LSR [RCD]", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _CE | _NL);
@@ -911,24 +911,39 @@ void setup() {
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, allRegE[dest] | _SO | _MW | _SD);
     writeMicroCodeByte(addr++, _SC | _SD | _IC);
-    
+
     sprintf(buf, "PUL R%c", regName[dest]);
     showCommand(buf, cmd);
     writeLabelUncond(true, cmd++, addr);
     writeMicroCodeByte(addr++, _SC);
     writeMicroCodeByte(addr++, allRegW[dest] | _SO | _ME | _IC);
-    
-    dest++; 
+
+    dest++;
   }
-  
+
   showCommand("PSF", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _FE | _SO | _MW | _SD);
   writeMicroCodeByte(addr++, _SC | _SD | _IC);
-    
+
   showCommand("PLF", cmd);
   writeLabelUncond(true, cmd++, addr);
-  writeMicroCodeByte(addr++, _SC);
+  writeMicroCodeByte(addr++, _SC | _ALU_0 | _ZW);
+  writeMicroCodeByte(addr++, _SO | _ME | _ALU_OR | _FW);
+  writeMicroCodeByte(addr++, _goto(1));
+  int toggleAddr = addr;
+  writeMicroCodeByte(addr++, _TI);
+  int noToggleAddr = addr;
+  if (IS_LABEL_ROM) {
+    for (int f = 0; f <= (_F_C | _F_Z | _F_N | _F_V | _F_II | _F_IR | _F_IF); f++) {
+      if ((f & (_F_N | _F_II)) == 0) {
+        writeLabelByte(f, false, 1, noToggleAddr);
+        writeLabelByte(f | _F_N, false, 1, toggleAddr);
+        writeLabelByte(f | _F_II, false, 1, toggleAddr);
+        writeLabelByte(f | _F_N | _F_II, false, 1, noToggleAddr);
+      }
+    }
+  }
   writeMicroCodeByte(addr++, _SO | _ME | _FLG_BUS | _FW | _IC);
 
   /* Stackpointer */
@@ -937,25 +952,25 @@ void setup() {
   writeMicroCodeByte(addr++, _CE | _NL);
   writeMicroCodeByte(addr++, _DE | _NH);
   writeMicroCodeByte(addr++, _NO | _SI | _IC);
-  
+
   showCommand("MOV RCD,SP", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _S1 | _CW);
   writeMicroCodeByte(addr++, _S2 | _DW | _IC);
-  
+
   /* JMP addr */
   int jmpAddr = addr;
   writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
   writeMicroCodeByte(addr++, _PO | _ME | _NH);
   writeMicroCodeByte(addr++, _NO | _PI | _IC);
-  
+
   int noJmpAddr = addr;
   writeMicroCodeByte(addr++, _PC);
   writeMicroCodeByte(addr++, _PC | _IC);
-  
+
   showCommand("JMP addr", cmd);
   writeLabelUncond(true, cmd++, jmpAddr);
-  
+
   showCommand("JSR addr", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _PO | _ME | _NL | _PC);
@@ -964,7 +979,7 @@ void setup() {
   writeMicroCodeByte(addr++, _SC | _SD);
   writeMicroCodeByte(addr++, _P2 | _SO | _MW | _SD);
   writeMicroCodeByte(addr++, _NO | _PI | _SC | _SD | _IC);
-  
+
   showCommand("JCS addr", cmd);
   writeLabelForFlags(_F_C, true, cmd, jmpAddr);
   writeLabelForNotFlags(_F_C, true, cmd++, noJmpAddr);
@@ -980,34 +995,34 @@ void setup() {
   showCommand("JVS addr", cmd);
   writeLabelForFlags(_F_V, true, cmd, jmpAddr);
   writeLabelForNotFlags(_F_V, true, cmd++, noJmpAddr);
-  
+
   showCommand("JNC addr", cmd);
   writeLabelForFlags(_F_C, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_C, true, cmd++, jmpAddr);
-  
+
   showCommand("JNZ addr", cmd);
   writeLabelForFlags(_F_Z, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_Z, true, cmd++, jmpAddr);
-  
+
   showCommand("JNN addr", cmd);
   writeLabelForFlags(_F_N, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_N, true, cmd++, jmpAddr);
-  
+
   showCommand("JNV addr", cmd);
   writeLabelForFlags(_F_V, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_V, true, cmd++, jmpAddr);
-  
+
   /* JMP [RCD] */
-  jmpAddr = addr;  
+  jmpAddr = addr;
   writeMicroCodeByte(addr++, _CE | _NL);
   writeMicroCodeByte(addr++, _DE | _NH);
   writeMicroCodeByte(addr++, _NO | _PI | _IC);
-  
+
   noJmpAddr = nopAddr;
-  
+
   showCommand("JMP [RCD]", cmd);
   writeLabelUncond(true, cmd++, jmpAddr);
-  
+
   showCommand("JSR [RCD]", cmd);
   writeLabelUncond(true, cmd++, addr);
   writeMicroCodeByte(addr++, _CE | _NL);
@@ -1016,7 +1031,7 @@ void setup() {
   writeMicroCodeByte(addr++, _SC | _SD);
   writeMicroCodeByte(addr++, _P2 | _SO | _MW | _SD);
   writeMicroCodeByte(addr++, _NO | _PI | _SC | _SD | _IC);
-  
+
   showCommand("JCS [RCD]", cmd);
   writeLabelForFlags(_F_C, true, cmd, jmpAddr);
   writeLabelForNotFlags(_F_C, true, cmd++, noJmpAddr);
@@ -1032,19 +1047,19 @@ void setup() {
   showCommand("JVS [RCD]", cmd);
   writeLabelForFlags(_F_V, true, cmd, jmpAddr);
   writeLabelForNotFlags(_F_V, true, cmd++, noJmpAddr);
-  
+
   showCommand("JNC [RCD]", cmd);
   writeLabelForFlags(_F_C, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_C, true, cmd++, jmpAddr);
-  
+
   showCommand("JNZ [RCD]", cmd);
   writeLabelForFlags(_F_Z, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_Z, true, cmd++, jmpAddr);
-  
+
   showCommand("JNN [RCD]", cmd);
   writeLabelForFlags(_F_N, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_N, true, cmd++, jmpAddr);
-  
+
   showCommand("JNV [RCD]", cmd);
   writeLabelForFlags(_F_V, true, cmd, noJmpAddr);
   writeLabelForNotFlags(_F_V, true, cmd++, jmpAddr);
@@ -1142,103 +1157,159 @@ void setup() {
   writeMicroCodeByte(addr++, _ZE | _NH);
   writeMicroCodeByte(addr++, _NO | _MW | _AE);
   writeMicroCodeByte(addr++, _FLG_BUS | _FW | _SO | _ME | _IC);
-  
-  showCommand("PTF", cmd);
-  writeLabelUncond(true, cmd++, addr);
-  writeMicroCodeByte(addr++, _SC | _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _SO | _ME | _ALU_OR | _FW);
-  writeMicroCodeByte(addr++, _goto(1));   
-  int toggleAddr = addr;
-  writeMicroCodeByte(addr++, _TI);   
-  int noToggleAddr = addr;
-  if (IS_LABEL_ROM) {
-    for (int f = 0; f <= (_F_C | _F_Z | _F_N | _F_V | _F_II | _F_IR | _F_IF); f++) {
-      if ((f & (_F_N | _F_II)) == 0) {
-        writeLabelByte(f, false, 1, noToggleAddr);
-        writeLabelByte(f | _F_N, false, 1, toggleAddr);
-        writeLabelByte(f | _F_II, false, 1, toggleAddr);
-        writeLabelByte(f | _F_N | _F_II, false, 1, noToggleAddr);
-      }
-    }
-  }    
-  writeMicroCodeByte(addr++, _SO | _ME | _FLG_BUS | _FW | _IC);
-  
-/*
-  // Test routines   
-  sprintf(buf, "Cmd MALU: %02x %02x", addr, cmd);
-  writeLabelUncond(true, cmd++, addr);
-  Serial.println(buf);
-  
-  writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
-  writeMicroCodeByte(addr++, _NO | _SI | _PI);
-  
-  writeLabelUncond(false, 8, addr);
-  
-  writeMicroCodeByte(addr++, _P1 | _BW);  
-  writeMicroCodeByte(addr++, _P1 | _CW);  
-  writeMicroCodeByte(addr++, _BE | _ALU_BUS | _ZW );  
-  writeMicroCodeByte(addr++, _FLG_STC | _FW);  
-  writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);  
-  writeMicroCodeByte(addr++, _FLG_CLC | _FW);  
-  writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);  
-  writeMicroCodeByte(addr++, _ZE | _AW );  
-  writeMicroCodeByte(addr++, _PC);  
-  writeMicroCodeByte(addr++, _goto(8));
-  writeMicroCodeByte(addr++, _HC);
-   
-  sprintf(buf, "Cmd MALUD: %02x %02x", addr, cmd);
-  writeLabelUncond(true, cmd++, addr);
-  Serial.println(buf);
-  
-  writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
-  writeMicroCodeByte(addr++, _NO | _SI | _PI);
-  
-  writeLabelUncond(false, 9, addr);
-  
-  writeMicroCodeByte(addr++, _DE | _BW);  
-  writeMicroCodeByte(addr++, _DE | _CW);  
-  writeMicroCodeByte(addr++, _BE | _ALU_BUS | _ZW );  
-  writeMicroCodeByte(addr++, _FLG_STC | _FW);  
-  writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);  
-  writeMicroCodeByte(addr++, _FLG_CLC | _FW);  
-  writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);  
-  writeMicroCodeByte(addr++, _ZE | _AW );  
-  writeMicroCodeByte(addr++, _FLG_STC | _FW);  
-  writeMicroCodeByte(addr++, _ALU_0 | _ZW);  
-  writeMicroCodeByte(addr++, _DE | _ALU_ADD | _ZW);  
-  writeMicroCodeByte(addr++, _ZE | _DW );  
-  writeMicroCodeByte(addr++, _goto(9));
-  writeMicroCodeByte(addr++, _HC);
-   
-  sprintf(buf, "Cmd MMem: %02x %02x", addr, cmd);
-  writeLabelUncond(true, cmd++, addr);
-  Serial.println(buf);
-  
-  writeMicroCodeByte(addr++, _ALU_0 | _ZW);
-  writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
-  writeMicroCodeByte(addr++, _NO | _SI | _PI);
-   
-  writeLabelUncond(false, 10, addr);
-  
-  writeMicroCodeByte(addr++, _P1 | _OW | _CW);
-  writeMicroCodeByte(addr++, _P2 | _DW);
-  writeMicroCodeByte(addr++, _PO | _MW | _CE);
 
-  writeMicroCodeByte(addr++, _CE | _NL | _PC);
-  writeMicroCodeByte(addr++, _DE | _NH | _FLG_STC | _FW);
-  writeMicroCodeByte(addr++, _NO | _ME | _ZW | _ALU_BUS);
-  writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);  
-  writeMicroCodeByte(addr++, _FLG_CLC | _FW);  
-  writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);  
-  writeMicroCodeByte(addr++, _ZE | _AW | _NO | _MW);  
+  showCommand("OUT val,RA", cmd);
+  writeLabelUncond(true, cmd++, addr);
+  writeMicroCodeByte(addr++, _PO | _ME | _PS | _PC);
+  writeMicroCodeByte(addr++, _AE | _PW | _IC);
+
+  showCommand("INB RA,val", cmd);
+  writeLabelUncond(true, cmd++, addr);
+  writeMicroCodeByte(addr++, _PO | _ME | _PS | _PC | _ALU_0 | _ZW);
+  writeMicroCodeByte(addr++, _FLG_STC | _FW);
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW | _FW); // Z=1; C-Flg=0
+  writeMicroCodeByte(addr++, _ZE | _AW | _ALU_LSL | _ZW); // A=1; Z=2
+  writeMicroCodeByte(addr++, _ZE | _NL); // NL=2
+  writeMicroCodeByte(addr++, _PE | _ALU_OR  | _ZW); // Z=SPI, CLK=1
+  writeMicroCodeByte(addr++, _AE | _ALU_OR  | _ZW); // Z=SPI, CLK=1, MOSI=1
+  writeMicroCodeByte(addr++, _ZE | _NH); // NH=SPI, CLK=1, MOSI=1
+  writeMicroCodeByte(addr++, _N1 | _ALU_XOR | _ZW); // Z=SPI, CLK=0, MOSI=1
+  writeMicroCodeByte(addr++, _ZE | _NL); // NL=SPI, CLK=0, MOSI=1
   
-  writeMicroCodeByte(addr++, _goto(10));
-  writeMicroCodeByte(addr++, _HC);
-*/
+  writeLabelForNotFlags(_F_C, false, 2, addr);
+  writeMicroCodeByte(addr++, _N2 | _PW); // SPI CLK=1
+  writeMicroCodeByte(addr++, _PE | _ALU_LSL | _FW); // c_flg=MISO
+  writeMicroCodeByte(addr++, _AE | _ALU_LSL | _ZW | _FW); // Z=A<-MISO; C-Flg=<-A
+  writeMicroCodeByte(addr++, _N1 | _PW); // SPI CLK=0
+  writeMicroCodeByte(addr++, _ZE | _AW); // A=Z
+  writeMicroCodeByte(addr++, _goto(2));
+  
+  writeLabelForFlags(_F_C, false, 2, addr);
+  writeMicroCodeByte(addr++, _FLG_CLC | _FW | _IC);
+
+  showCommand("INB [RCD],RB,val", cmd);
+  writeLabelUncond(true, cmd++, addr);
+  writeMicroCodeByte(addr++, _PO | _ME | _PS | _PC); // Port selector
+  writeMicroCodeByte(addr++, _P1 | _SO | _MW | _SD); // save PC
+  writeMicroCodeByte(addr++, _SC | _SD | _ALU_0 | _ZW); // save PC
+  writeMicroCodeByte(addr++, _P2 | _SO | _MW); // save PC
+  
+  writeMicroCodeByte(addr++, _CE | _NL); // dest buffer low
+  writeMicroCodeByte(addr++, _DE | _NH | _ALU_0 | _ZW); // dest buffer high
+  writeMicroCodeByte(addr++, _NO | _PI | _FLG_STC | _FW); // dest buffer -> PC
+  
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW | _FW); // Z=1; C-Flg=0
+  writeMicroCodeByte(addr++, _ZE | _DW | _ALU_LSL | _ZW); // D=1; Z=2
+  writeMicroCodeByte(addr++, _ZE | _NL); // NL=2
+  writeMicroCodeByte(addr++, _PE | _ALU_OR  | _ZW); // Z=SPI, CLK=1
+  writeMicroCodeByte(addr++, _DE | _ALU_OR  | _ZW); // Z=SPI, CLK=1, MOSI=1
+  writeMicroCodeByte(addr++, _ZE | _NH); // NH=SPI, CLK=1, MOSI=1
+  writeMicroCodeByte(addr++, _N1 | _ALU_XOR | _ZW); // Z=SPI, CLK=0, MOSI=1
+  writeMicroCodeByte(addr++, _ZE | _NL); // NL=SPI, CLK=0, MOSI=1
+  
+  writeLabelForNotFlags(_F_Z, false, 3, addr);
+  writeMicroCodeByte(addr++, _DE | _ALU_BUS | _ZW); // Z=1
+  
+  writeLabelForNotFlags(_F_C, false, 4, addr);
+  writeMicroCodeByte(addr++, _N2 | _PW); // SPI CLK=1
+  writeMicroCodeByte(addr++, _PE | _ALU_LSL | _FW); // c-Flg=MISO
+  writeMicroCodeByte(addr++, _N1 | _PW); // SPI CLK=0
+  writeMicroCodeByte(addr++, _ZE | _ALU_LSL | _ZW | _FW); // Z=Z<-MISO; C-Flg=<-Z
+  writeMicroCodeByte(addr++, _goto(4));
+  
+  writeLabelForFlags(_F_C, false, 4, addr);
+  writeMicroCodeByte(addr++, _ZE | _PO | _MW); // save received byte
+  writeMicroCodeByte(addr++, _PC | _BE | _ALU_BUS | _ZW); // Z=B
+  writeMicroCodeByte(addr++, _DE | _ALU_SUB | _ZW | _FW); // Z=B-1, Z-Flg=(B==0)
+  writeMicroCodeByte(addr++, _ZE | _BW); // B=B-1
+  writeMicroCodeByte(addr++, _goto(3));
+  
+  writeLabelForFlags(_F_Z, false, 3, addr);
+  writeMicroCodeByte(addr++, _P1 | _CW);
+  writeMicroCodeByte(addr++, _P2 | _DW);
+  writeMicroCodeByte(addr++, _SO | _ME | _NH);
+  writeMicroCodeByte(addr++, _SC);
+  writeMicroCodeByte(addr++, _SO | _ME | _NL);  
+  writeMicroCodeByte(addr++, _NO | _PI | _FLG_CLC | _FW | _IC);
+
+  /*
+    // Test routines
+    sprintf(buf, "Cmd MALU: %02x %02x", addr, cmd);
+    writeLabelUncond(true, cmd++, addr);
+    Serial.println(buf);
+
+    writeMicroCodeByte(addr++, _ALU_0 | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
+    writeMicroCodeByte(addr++, _NO | _SI | _PI);
+
+    writeLabelUncond(false, 8, addr);
+
+    writeMicroCodeByte(addr++, _P1 | _BW);
+    writeMicroCodeByte(addr++, _P1 | _CW);
+    writeMicroCodeByte(addr++, _BE | _ALU_BUS | _ZW );
+    writeMicroCodeByte(addr++, _FLG_STC | _FW);
+    writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);
+    writeMicroCodeByte(addr++, _FLG_CLC | _FW);
+    writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _AW );
+    writeMicroCodeByte(addr++, _PC);
+    writeMicroCodeByte(addr++, _goto(8));
+    writeMicroCodeByte(addr++, _HC);
+
+    sprintf(buf, "Cmd MALUD: %02x %02x", addr, cmd);
+    writeLabelUncond(true, cmd++, addr);
+    Serial.println(buf);
+
+    writeMicroCodeByte(addr++, _ALU_0 | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
+    writeMicroCodeByte(addr++, _NO | _SI | _PI);
+
+    writeLabelUncond(false, 9, addr);
+
+    writeMicroCodeByte(addr++, _DE | _BW);
+    writeMicroCodeByte(addr++, _DE | _CW);
+    writeMicroCodeByte(addr++, _BE | _ALU_BUS | _ZW );
+    writeMicroCodeByte(addr++, _FLG_STC | _FW);
+    writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);
+    writeMicroCodeByte(addr++, _FLG_CLC | _FW);
+    writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _AW );
+    writeMicroCodeByte(addr++, _FLG_STC | _FW);
+    writeMicroCodeByte(addr++, _ALU_0 | _ZW);
+    writeMicroCodeByte(addr++, _DE | _ALU_ADD | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _DW );
+    writeMicroCodeByte(addr++, _goto(9));
+    writeMicroCodeByte(addr++, _HC);
+
+    sprintf(buf, "Cmd MMem: %02x %02x", addr, cmd);
+    writeLabelUncond(true, cmd++, addr);
+    Serial.println(buf);
+
+    writeMicroCodeByte(addr++, _ALU_0 | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _NH | _NL | _AW | _BW | _CW | _DW);
+    writeMicroCodeByte(addr++, _NO | _SI | _PI);
+
+    writeLabelUncond(false, 10, addr);
+
+    writeMicroCodeByte(addr++, _P1 | _OW | _CW);
+    writeMicroCodeByte(addr++, _P2 | _DW);
+    writeMicroCodeByte(addr++, _PO | _MW | _CE);
+
+    writeMicroCodeByte(addr++, _CE | _NL | _PC);
+    writeMicroCodeByte(addr++, _DE | _NH | _FLG_STC | _FW);
+    writeMicroCodeByte(addr++, _NO | _ME | _ZW | _ALU_BUS);
+    writeMicroCodeByte(addr++, _CE | _ALU_SUB | _ZW);
+    writeMicroCodeByte(addr++, _FLG_CLC | _FW);
+    writeMicroCodeByte(addr++, _AE | _ALU_ADD | _ZW);
+    writeMicroCodeByte(addr++, _ZE | _AW | _NO | _MW);
+
+    writeMicroCodeByte(addr++, _goto(10));
+    writeMicroCodeByte(addr++, _HC);
+  */
 
   /* set unused op codes to HLT */
+  Serial.println(F("Writing unsused codes"));
+
   writeMicroCodeByte(addr, _HC);
   while (cmd < 256) {
     writeLabelUncond(true, cmd++, addr);
@@ -1247,15 +1318,15 @@ void setup() {
 
   if (IS_MC_ROM)
     printContents(0);
-  else 
-    printContents4M(0);      
+  else
+    printContents4M(0);
 
-  int spentSeconds = (millis()-startMillis) / 1000;
+  int spentSeconds = (millis() - startMillis) / 1000;
   sprintf(buf, "took %ds ROM#%d", spentSeconds, ROM_NR);
   Serial.println(buf);
   if (writeErrors > 0) {
     sprintf(buf, "\r\nERR: %d\r\n", writeErrors);
-    Serial.println(buf);    
+    Serial.println(buf);
   }
   Serial.println(F("done."));
 }

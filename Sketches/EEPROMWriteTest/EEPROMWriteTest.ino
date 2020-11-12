@@ -13,18 +13,20 @@
 #define READ true     // for the setAddress procedure
 #define WRITE false   // for the setAddress procedure
 
+int writeErrors = 0;
 
-void setAddress(int address, boolean outputEnable) {
+void setAddress(unsigned int address, boolean outputEnable) {
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, (address >> 8) | (outputEnable ? 0 : 0x80));
   shiftOut(SHIFT_DATA, SHIFT_CLK, MSBFIRST, address);
-  
+
   digitalWrite(SHIFT_LATCH, LOW);
   digitalWrite(SHIFT_LATCH, HIGH);
-  digitalWrite(SHIFT_LATCH, LOW);  
+  digitalWrite(SHIFT_LATCH, LOW);
 }
-byte writeEEPROM(int address, byte odata) {
+
+void sendEEPROM(unsigned int address, byte odata) {
   setDataPinMode(OUTPUT);
-  
+
   setAddress(address, WRITE);
 
   byte data = odata;
@@ -32,31 +34,39 @@ byte writeEEPROM(int address, byte odata) {
     digitalWrite(pin, data & 0x80);
     data = data << 1;
   }
-  digitalWrite(WRITE_ENABLE, LOW);  
+  digitalWrite(WRITE_ENABLE, LOW);
   delayMicroseconds(1);
   digitalWrite(WRITE_ENABLE, HIGH);
+}
+
+void writeEEPROM(unsigned int address, byte odata) {
+  sendEEPROM(address, odata);
   
+  delay(2);
   byte l = readEEPROM(address);
-  int cnt = 1000;
+  int cnt = 100;
   while ((cnt > 0) && (l != odata)) {
     cnt--;
-    l = readEEPROM(0);
+    if ((address & 0xff) == 0)
+      l = readEEPROM(address + 1);
+    else
+      l = readEEPROM(address - 1);
     l = readEEPROM(address);
   }
-
-  if (cnt == 0){
-    char buf[80];
+  if (l != odata) {
+    char buf[60];
     sprintf(buf, "\r\nWRITE ERROR on %04x! (%02x %02x)\r\n", address, odata, l);
     Serial.println(buf);
+    writeErrors++;
   }
 }
 
-byte readEEPROM(int address) {
-  setDataPinMode(INPUT);  
-  
+byte readEEPROM(unsigned int address) {
+  setDataPinMode(INPUT);
+
   setAddress(address, READ);
-  
-  setDataPinMode(INPUT);  
+
+  setDataPinMode(INPUT);
   byte data = 0;
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
     data = data * 2 + digitalRead(pin);
@@ -67,11 +77,11 @@ byte readEEPROM(int address) {
 void setDataPinMode(int mode) {
   for (int pin = EEPROM_D7; pin >= EEPROM_D0; pin--) {
     pinMode(pin, mode);
-  }  
+  }
 }
 
 void initPorts() {
-  digitalWrite(WRITE_ENABLE, HIGH);  
+  digitalWrite(WRITE_ENABLE, HIGH);
   digitalWrite(SHIFT_LATCH, LOW);
   pinMode(SHIFT_DATA, OUTPUT);
   pinMode(SHIFT_CLK, OUTPUT);
@@ -80,7 +90,7 @@ void initPorts() {
 }
 
 void printContents(int baseAddress) {
-  for (int base = 0; base <= 255; base += 16) {
+  for (unsigned int base = 0; base <= 255; base += 16) {
     byte data[16];
     for (int offset = 0; offset <= 15; offset++) {
       data[offset] = readEEPROM(baseAddress + base + offset);
@@ -95,23 +105,46 @@ void printContents(int baseAddress) {
   }
 }
 
+void unlock() {
+ sendEEPROM(0x5555, 0xAA); 
+ sendEEPROM(0x2AAA, 0x55); 
+ sendEEPROM(0x5555, 0x80); 
+ sendEEPROM(0x5555, 0xAA); 
+ sendEEPROM(0x2AAA, 0x55); 
+ sendEEPROM(0x5555, 0x20); 
+ sendEEPROM(0x0000, 0x00); 
+ sendEEPROM(0x0000, 0x00); 
+}
+
 void setup() {
   // put your setup code code here, to run once:
   Serial.begin(57600);
-  Serial.println("start generating 7 segment LED EEPROM");
+  Serial.println("start writing EEPROM");
   unsigned long startMillis = millis();
   
   initPorts();
+  char buf[80];
+  printContents(0);
+  
+  Serial.println("Unlocking EEPROM");
+  unlock();
+  printContents(0);
   
   Serial.println("Erasing EEPROM");
-  for (int i = 0; i < 256*16; i++) {
-    int d = i % 10;
-    writeEEPROM(i, 0xFF);
+  for (unsigned int i = 0; i < 32768; i++) {
+    if ( (i % 1024) == 0) {
+    sprintf(buf, "Pos: %d", i);
+    Serial.println(buf);
+    }
+    writeEEPROM(i, 0x00);
   }
   printContents(0);
 
-  int spendSeconds = (millis()-startMillis) / 1000;
-  char buf[80];
+  unsigned int spendSeconds = (millis()-startMillis) / 1000;
+  if (writeErrors > 0) {
+    sprintf(buf, "%d ERRORS", writeErrors);
+    Serial.println(buf);
+  }
   sprintf(buf, "took %d seconds", spendSeconds);
   Serial.println(buf);
   Serial.println("done.");

@@ -17,7 +17,7 @@ void SPI_init() {
   pinMode(SPI_MISO, INPUT);
   pinMode(SPI_CLK, OUTPUT);
   
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 20; i++) {
     SPI_send_byte(0xff);
   }
   
@@ -34,7 +34,7 @@ void SPI_init() {
   char buf[80];
   sprintf(buf, "Response auf CMD0: %d", response);
   Serial.println(buf);
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   SPI_send_byte(0x48);
   SPI_send_byte(0x00);
@@ -63,7 +63,7 @@ void SPI_init() {
 
   int cnt = 10;
   do {
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   SPI_send_byte(55+64);
   SPI_send_byte(0x00);
@@ -76,10 +76,10 @@ void SPI_init() {
   sprintf(buf, "Response auf CMD55: %d", response);
   Serial.println(buf);
   
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   SPI_send_byte(41+64);
-  SPI_send_byte(0x40);
+  SPI_send_byte(0x00);
   SPI_send_byte(0x00);
   SPI_send_byte(0x00);
   SPI_send_byte(0x00);
@@ -90,7 +90,7 @@ void SPI_init() {
   Serial.println(buf);
   } while (cnt-- > 0 && response == 1);
   
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   SPI_send_byte(58+64);
   SPI_send_byte(0x00);
@@ -115,7 +115,7 @@ void SPI_init() {
     sprintf(buf, "Response auf CMD58: %02x", response);
     Serial.println(buf);
   
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   SPI_send_byte(16+64);
   SPI_send_byte(0x00);
@@ -127,10 +127,14 @@ void SPI_init() {
   response = SPI_receive_response_byte();
   sprintf(buf, "Response auf CMD16: %d", response);
   Serial.println(buf);
+  
+  digitalWrite(SPI_CS, HIGH);
+  SPI_send_byte(0xff);
+
 }
 
 byte read_block(uint32_t offset, byte sect[]) {  
-  SPI_send_byte(0xff);
+  //SPI_send_byte(0xff);
 
   byte addr0 = offset & 0xff;
   byte addr1 = (offset >> 8)  & 0xff;
@@ -172,7 +176,7 @@ byte SPI_receive_response_byte() {
   delayMicroseconds(BYTE_DELAY);
   digitalWrite(SPI_MOSI, HIGH);
   byte data = 0xff;
-  int cnt = 16;
+  int cnt = 64;
   while (cnt-- > 0 && (data & 0x80) != 0) {
     data = (data << 1);
     digitalWrite(SPI_CLK, HIGH);
@@ -232,6 +236,8 @@ void setup() {
   Serial.begin(57600);
   SPI_init();
   
+  digitalWrite(SPI_CS, LOW);
+
   byte sect[BLKSIZE];        
   byte response = read_block((uint32_t) 0, sect);
 
