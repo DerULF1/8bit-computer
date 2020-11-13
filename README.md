@@ -72,12 +72,12 @@ To add external devices to the machine I use an 8 bit port mechanism. That mecha
 Each controller must assure that it doesn't write to the data bus as long as it isn't told to do so. 
 
 ## External Devices
-Since each external device needs its own specialized decoder I built decoders for those devices I wanted to be included.
+Since each external device needs its own specialized decoder, I built decoders for those devices I wanted to be included.
 
 ### [LCD Display](Schematics/LCD.pdf)
-The 4x20 characters display I connected has a 4 bit communication mode which allows to completely control the display with only seven lines. In that mode each byte send to or received from the display must be split into two half bytes and be transmitted one after the other leading to more complexity on the software side. But on the other hand that way the display only uses one port.
+The 4x20 characters display I connected has a 4 bit communication mode which allows to completely control the display with only seven lines. In that mode each byte sent to or received from the display must be split into two half bytes and be transmitted one after the other leading to more complexity on the software side. But on the other hand, that way the display only uses one port.
 
-As there is one bit left over which is not needed to talk to the display I use that bit to control the power of the back light of the display.
+As there is one bit left over which is not needed to talk to the display, I use that bit to control the power of the back light of the display.
 
 ### [SPI Bus](Schematics/SPI.pdf)
 Since the SPI bus only uses two output control lines and one input control line it only needs two chips to set up an SPI controller. One chip (74HCT245) is the bus transceiver the other (74HCT173) is holding the two output bits to the SPI bus. The two other bits of that chip are used to select the device on the SPI bus.
