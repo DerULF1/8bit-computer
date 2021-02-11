@@ -1,7 +1,8 @@
 # 8bit-computer
 ## Introduction
-Like some more people I was highly impressed by [Ben Eater's series](https://www.youtube.com/playlist?list=PLowKtXNTBypGqImE405J2565dvjafglHU) about building a computer from simple ICs on breadboards. My first attempts to work on electronics decades ago all failed because of my disability to solder. So building without soldering was what caught my attention.
-My personal background on computers is a degree in applied computer science but I have no deeper knowledge in electronics except for the basics they teach in school. But [James Bates' series](https://www.youtube.com/playlist?list=PL_i7PfWMNYobSPpg1_voiDe6qBcjvuVui) convinced me to try some enhancements on Ben Eater's additional design.
+Like some more people I was highly impressed by [Ben Eater's series](https://www.youtube.com/playlist?list=PLowKtXNTBypGqImE405J2565dvjafglHU) about building a computer from simple ICs on breadboards. My first attempts to work on electronics decades ago all failed because of my inability to solder. So building without soldering was what caught my attention.
+My personal background on computers is a degree in applied computer science but I have no deeper knowledge in electronics except for the basics they teach in school. But [James Bates' series](https://www.youtube.com/playlist?list=PL_i7PfWMNYobSPpg1_voiDe6qBcjvuVui) convinced me to try some additional enhancements on Ben Eater's design.
+Pictures of this build and some additional explanations can be found in [my video series](https://youtube.com/playlist?list=PL5-Ar_CvItgaP27eT_C7MnCiubkyaEqF0). 
 
 ## Major Enhancements to Ben Eater's Design
 * [16-bit address bus with 64k bytes of RAM](Schematics/memory.pdf)
@@ -64,7 +65,7 @@ In my design there is no single dedicated memory address register but three diff
 
 All three registers have direct connection to the address line of the RAM chip and some care must be taken in the micro code to only have one of those registers having the output to the address bus enabled at one step.
 
-The program counter and the stack address are special purpose registers whereas the new address register is used whenever there is a memory address to be used that is put together by two 8 bit numbers coming from the data bus. All address registers have control lines that allow them to put their upper or lower byte value to the address bus. But only the new address register is also able to read single bytes from the data bus. The other two registers read their new value from the address bus which is defined by the content of the new address register.
+The program counter and the stack address are special purpose registers whereas the new address register is used whenever there is a memory address that is put together by two 8 bit numbers coming from the data bus. All address registers have control lines that allow them to put their upper or lower byte value to the address bus. But only the new address register is also able to read single bytes from the data bus. The other two registers read their new value from the address bus which is defined by the content of the new address register.
 
 ### [Port Selector](Schematics/PortSelector.pdf)
 To add external devices to the machine I use an 8 bit port mechanism. That mechanism allows external controllers to read from or write to the data bus. Two dedicated port instructions (INP, OUT) move that byte from the bus to the A register or vice versa. That way it is possible to add devices without the need to change the micro code.
@@ -85,4 +86,4 @@ Since the SPI bus only uses two output control lines and one input control line 
 ### [PS/2 Keyboard](Schematics/PS2Controler.pdf)
 The PS/2 controller is built to receive a single scan code from the keyboard asynchronously ignoring the parity bit. A byte from the keyboard may be received at any time and is completely independent of the speed that the computer is running on. Whenever a byte is received the controller sets an interrupt request and inhibits the keyboard from sending further bytes until the last byte is read from the buffer. That way the computer has all the time it needs to receive and interpret one byte after the other.
 
-It's also possible to send bytes to the keyboard by giving full control over the two control lines on the PS/2 bus. The PS/2 protocol must be implemented on the software side. The implementation is quite timing critical, because the keyboard is sending the clock signal and expects the computer to respond as fast as the clock ticks which is around 10kHz.
+It's also possible to send bytes to the keyboard by giving full control over the two control lines on the PS/2 bus. The PS/2 protocol for sending must be implemented on the software side. The implementation is quite timing critical, because the keyboard is sending the clock signal and expects the computer to respond as fast as the clock ticks which is around 10kHz.
