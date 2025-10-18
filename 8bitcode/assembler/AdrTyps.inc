@@ -1,0 +1,16 @@
+;
+; List of all address type values
+;
+ADR_RA = 0x01
+ADR_RB = 0x02
+ADR_RC = 0x03
+ADR_RD = 0x04
+ADR_RCD = 0x05
+ADR_SP = 0x06
+ADR_IMM = 0x07
+ADR_ABS = 0x08
+ADR_ABS_IDX = 0x09
+ADR_RCD_INDIR = 0x0a
+ADR_RCD_INDIR_IDX = 0x0b
+ADR_ABS_INDIR = 0x0c
+ADR_ABS_INDIR_IDX = 0x0d

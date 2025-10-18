@@ -8,7 +8,7 @@ Pictures of this build and some additional explanations can be found in [my vide
 * [16-bit address bus with 64k bytes of RAM](Schematics/memory.pdf)
 * [four general purpose registers](Schematics/Register.pdf)
 * [ALU with boolean and shift operations](Schematics/ALU.pdf)
-* dividing [instruction decoding](Schematics/InstructionDecoder.pdf) from [control logic](Schematics/ControlLogic.pdf)
+* separating [instruction decoding](Schematics/InstructionDecoder.pdf) from [control logic](Schematics/ControlLogic.pdf)
 * [four 8-bit digital input-/output-ports](Schematics/PortSelector.pdf)
 * [16-bit stack pointer](Schematics/StackAddress.pdf)
 * [interrupt controller](Schematics/InstructionDecoder.pdf)
@@ -87,3 +87,25 @@ Since the SPI bus only uses two output control lines and one input control line 
 The PS/2 controller is built to receive a single scan code from the keyboard asynchronously ignoring the parity bit. A byte from the keyboard may be received at any time and is completely independent of the speed that the computer is running on. Whenever a byte is received the controller sets an interrupt request and inhibits the keyboard from sending further bytes until the last byte is read from the buffer. That way the computer has all the time it needs to receive and interpret one byte after the other.
 
 It's also possible to send bytes to the keyboard by giving full control over the two control lines on the PS/2 bus. The PS/2 protocol for sending must be implemented on the software side. The implementation is quite timing critical, because the keyboard is sending the clock signal and expects the computer to respond as fast as the clock ticks which is around 10kHz.
+
+## Sample Software
+For demonstration purposes and on request I also put some of the source code running on my 8bit-computer in folder [8bitcode]. I use the customizable assembler written by [hlorenzi](https://github.com/hlorenzi/customasm) to translate these sources.
+
+### OS 
+This folder contains the source code for my unix inspired operating system.
+
+### utils
+Some of the unix utilities like cat, echo, ls etc. are available in a very basic form. 
+
+### assembler
+There is an assembler that can run on the 8bit-computer itself. That allows bootstrapping of the system.
+
+### BigClock
+On some of my videos a clock with large digits is running as a demo program.
+
+### htetris
+htetris is a simple clone of the classic late 80's tetris game to be played horizontally.
+
+### mandelbrot
+A program that draws a simple mandelbrot set onto the LCD screen. It is my take on the [8-Bit Battle Royale](https://www.youtube.com/playlist?list=PLPSrOWYluVLIwjHSJKuO8UU8BTT3uceqU).
+ 
